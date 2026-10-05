@@ -1,0 +1,62 @@
+﻿<Page x:Class="Restatify.Tensegrity.App.MainPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="using:Restatify.Tensegrity.App"
+      xmlns:core="using:Restatify.Tensegrity.App.Core"
+      xmlns:utu="using:Uno.Toolkit.UI"
+      xmlns:um="using:Uno.Material"
+      Background="{ThemeResource BackgroundBrush}">
+  <Page.DataContext>
+    <core:MainViewModel />
+  </Page.DataContext>
+  <ScrollViewer IsTabStop="True">
+    <Grid utu:SafeArea.Insets="VisibleBounds" Padding="24">
+      <StackPanel Spacing="16" MaxWidth="420">
+        <TextBlock Text="Tensegrity AI" Style="{StaticResource TitleLarge}" />
+
+        <TextBlock Text="Vertraulichkeitsstufe" Style="{StaticResource BodyStrong}" />
+
+        <ComboBox SelectedItem="{Binding SelectedLevel, Mode=TwoWay}"
+                  ItemsSource="{Binding AvailableLevels}"
+                  HorizontalAlignment="Stretch" />
+
+        <TextBox PlaceholderText="Deine Frage …"
+                 Text="{Binding Prompt, Mode=TwoWay}"
+                 AcceptsReturn="False" />
+
+        <Border Background="{ThemeResource SecondaryBrush}" CornerRadius="12" Padding="16">
+          <TextBlock Text="{Binding TaintText}" TextWrapping="WrapWholeWords" />
+        </Border>
+
+        <TextBlock Text="{Binding PolicyText}" TextWrapping="WrapWholeWords" />
+
+        <Button Content="An Cloud senden"
+                IsEnabled="{Binding CanSend}"
+                Click="OnSendClicked" />
+
+        <TextBlock Text="{Binding StatusText}" TextWrapping="WrapWholeWords" />
+
+        <TextBlock Text="Feedback" Style="{StaticResource BodyStrong}" />
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="👍" Click="OnThumbsUpClicked" />
+          <Button Content="👎" Click="OnThumbsDownClicked" />
+        </StackPanel>
+
+        <TextBox PlaceholderText="Beleg oder Quelle …"
+                 Text="{Binding Feedback.Citation, Mode=TwoWay}" />
+
+        <TextBox PlaceholderText="Kommentar (optional) …"
+                 Text="{Binding Feedback.Comment, Mode=TwoWay}"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap" />
+
+        <Button Content="Feedback senden"
+                IsEnabled="{Binding Feedback.CanSubmit}"
+                Click="OnFeedbackSubmitClicked" />
+
+        <TextBlock Text="{Binding Feedback.StatusText}" TextWrapping="WrapWholeWords" />
+      </StackPanel>
+    </Grid>
+  </ScrollViewer>
+</Page>
