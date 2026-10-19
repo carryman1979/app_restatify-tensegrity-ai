@@ -196,7 +196,18 @@
 
         <TextBox Grid.Column="1" PlaceholderText="Type in your message..."
                  Text="{Binding Prompt, Mode=TwoWay}"
-                 VerticalAlignment="Center" Margin="10,0" />
+                 Foreground="#FF1B1F36"
+                 PlaceholderForeground="#FF6A7089"
+                 Background="#FFE9ECF5"
+                 BorderBrush="#FFE9ECF5"
+                 VerticalAlignment="Center" Margin="10,0">
+          <TextBox.Resources>
+            <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#FFE9ECF5" />
+            <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#FF1B1F36" />
+            <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#FFF26D3D" />
+            <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#FF6A7089" />
+          </TextBox.Resources>
+        </TextBox>
 
         <Button Grid.Column="2" Click="OnSendClicked" IsEnabled="{Binding CanSend}"
                 Background="Transparent" Padding="0" VerticalAlignment="Center">
