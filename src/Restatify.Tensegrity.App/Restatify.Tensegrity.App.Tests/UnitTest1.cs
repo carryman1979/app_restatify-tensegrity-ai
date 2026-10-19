@@ -265,7 +265,7 @@ public class UnitTest1
     }
 
     [Test]
-    public void Feedback_Submit_Blocks_Local_Only_Level()
+    public async Task Feedback_Submit_Blocks_Local_Only_Level()
     {
         var viewModel = new MainViewModel(new FakeGateway());
         viewModel.SelectedLevel = ConfidentialityLevel.NurLokal;
@@ -273,14 +273,14 @@ public class UnitTest1
         feedback.Rating = 1;
         feedback.Citation = "Quelle";
 
-        var accepted = feedback.Submit();
+        var accepted = await feedback.SubmitAsync();
 
         Assert.That(accepted, Is.False);
         Assert.That(feedback.StatusText, Does.Contain("verworfen"));
     }
 
     [Test]
-    public void Feedback_Submit_Accepts_Valid_Feedback()
+    public async Task Feedback_Submit_Accepts_Valid_Feedback()
     {
         var viewModel = new MainViewModel(new FakeGateway());
         viewModel.SelectedLevel = ConfidentialityLevel.Offen;
@@ -288,10 +288,42 @@ public class UnitTest1
         feedback.Rating = 1;
         feedback.Citation = "Quelle";
 
-        var accepted = feedback.Submit();
+        var accepted = await feedback.SubmitAsync();
 
         Assert.That(accepted, Is.True);
         Assert.That(feedback.StatusText, Does.Contain("angenommen"));
+    }
+
+    [Test]
+    public async Task Feedback_SubmitAsync_Sends_Draft_To_Channel()
+    {
+        var channel = new FakeFeedbackChannel();
+        var viewModel = new MainViewModel(new FakeGateway());
+        var feedback = new FeedbackViewModel(viewModel, channel)
+        {
+            Rating = 1,
+            Citation = "Quelle"
+        };
+
+        var accepted = await feedback.SubmitAsync();
+
+        Assert.That(accepted, Is.True);
+        Assert.That(channel.CallCount, Is.EqualTo(1));
+        Assert.That(channel.LastDraft, Is.Not.Null);
+        Assert.That(channel.LastDraft!.Rating, Is.EqualTo(1));
+    }
+
+    private sealed class FakeFeedbackChannel : IFeedbackChannel
+    {
+        public int CallCount { get; private set; }
+        public FeedbackDraft? LastDraft { get; private set; }
+
+        public Task<FeedbackAck> SubmitAsync(FeedbackDraft draft, CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            LastDraft = draft;
+            return Task.FromResult(new FeedbackAck(true, "accepted"));
+        }
     }
 }
 

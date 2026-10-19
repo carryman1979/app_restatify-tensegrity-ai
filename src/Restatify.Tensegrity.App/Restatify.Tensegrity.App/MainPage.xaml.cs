@@ -31,11 +31,11 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private void OnFeedbackSubmitClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    private async void OnFeedbackSubmitClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         if (DataContext is Core.MainViewModel viewModel)
         {
-            viewModel.Feedback.Submit();
+            await viewModel.Feedback.SubmitAsync();
         }
     }
 }
