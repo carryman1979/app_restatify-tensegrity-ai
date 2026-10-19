@@ -168,6 +168,57 @@ public class UnitTest1
     }
 
     [Test]
+    public async Task ViewModel_SendAsync_Appends_User_And_Assistant_Messages()
+    {
+        var gateway = new FakeGateway();
+        var viewModel = new MainViewModel(gateway)
+        {
+            SelectedLevel = ConfidentialityLevel.Offen,
+            Prompt = "Frage"
+        };
+        var before = viewModel.Messages.Count;
+
+        await viewModel.SendAsync();
+
+        Assert.That(viewModel.Messages.Count, Is.EqualTo(before + 2));
+        Assert.That(viewModel.Messages[^2].IsUser, Is.True);
+        Assert.That(viewModel.Messages[^2].Text, Is.EqualTo("Frage"));
+        Assert.That(viewModel.Messages[^1].IsUser, Is.False);
+        Assert.That(viewModel.Prompt, Is.Empty);
+    }
+
+    [Test]
+    public async Task ViewModel_SendAsync_Blocked_Adds_Assistant_Note_Without_User_Message()
+    {
+        var gateway = new FakeGateway();
+        var viewModel = new MainViewModel(gateway)
+        {
+            SelectedLevel = ConfidentialityLevel.NurLokal,
+            Prompt = "Geheim"
+        };
+        var before = viewModel.Messages.Count;
+
+        await viewModel.SendAsync();
+
+        Assert.That(viewModel.Messages.Count, Is.EqualTo(before + 1));
+        Assert.That(viewModel.Messages[^1].IsUser, Is.False);
+        Assert.That(gateway.CallCount, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void ViewModel_Seeds_Welcome_Message_And_Privacy_Mode_Text()
+    {
+        var viewModel = new MainViewModel(new FakeGateway());
+
+        Assert.That(viewModel.Messages, Is.Not.Empty);
+        Assert.That(viewModel.Messages[0].IsUser, Is.False);
+        Assert.That(viewModel.PrivacyModeText, Is.EqualTo("Open"));
+
+        viewModel.SelectedLevel = ConfidentialityLevel.StrengGeheim;
+        Assert.That(viewModel.PrivacyModeText, Is.EqualTo("Strictly confidential"));
+    }
+
+    [Test]
     public void ViewModel_CanSend_Requires_Prompt_And_Allowed_Level()
     {
         var viewModel = new MainViewModel(new FakeGateway());

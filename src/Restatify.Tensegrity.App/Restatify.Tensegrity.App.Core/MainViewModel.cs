@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -26,19 +27,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _cloudGateway = cloudGateway;
         _policy = policy;
         Feedback = new FeedbackViewModel(this);
+        Messages.Add(ChatMessage.Assistant(
+            "Hallo! Ich bin NORA. Wähle unten links den Privacy-Mode und stelle deine Frage."));
     }
 
     public FeedbackViewModel Feedback { get; } = null!;
 
-    public event PropertyChangedEventHandler? PropertyChanged;
+    /// <summary>Chat-Verlauf für die Blasen-Darstellung (NORA links, Nutzer rechts).</summary>
+    public ObservableCollection<ChatMessage> Messages { get; } = new();
 
-    public IReadOnlyList<ConfidentialityLevel> AvailableLevels { get; } = new[]
-    {
-        ConfidentialityLevel.Offen,
-        ConfidentialityLevel.Vertraulich,
-        ConfidentialityLevel.StrengGeheim,
-        ConfidentialityLevel.NurLokal
-    };
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public ConfidentialityLevel SelectedLevel
     {
@@ -51,8 +49,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(CloudAllowed));
                 OnPropertyChanged(nameof(WebBlocked));
-                OnPropertyChanged(nameof(PolicyText));
                 OnPropertyChanged(nameof(CanSend));
+                OnPropertyChanged(nameof(PrivacyModeText));
             }
         }
     }
@@ -97,26 +95,38 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ? "Policy-Engine: Rust-Core (nativ)"
         : "Policy-Engine: Managed (Fallback)";
 
-    public string PolicyText => WebBlocked
-        ? "Diese Stufe ist im Web/Cloud-Pfad gesperrt."
-        : "Diese Stufe ist im Cloud-Pfad erlaubt.";
-
-    public string TaintText => "Taint-Regel: Die strengste gewählte Stufe gewinnt und blockiert unsichere Cloud-Pfade.";
+    /// <summary>Anzeigename der gewählten Stufe im Privacy-Mode-Popup (Mockup-Sprache).</summary>
+    public string PrivacyModeText => SelectedLevel switch
+    {
+        ConfidentialityLevel.Offen => "Open",
+        ConfidentialityLevel.Vertraulich => "Confidential",
+        ConfidentialityLevel.StrengGeheim => "Strictly confidential",
+        _ => "Nur lokal",
+    };
 
     public async Task SendAsync(CancellationToken cancellationToken = default)
     {
-        var request = CloudRequestBuilder.TryBuild(Guid.NewGuid().ToString("N"), SelectedLevel, Prompt, null);
+        var prompt = Prompt;
+        var request = CloudRequestBuilder.TryBuild(Guid.NewGuid().ToString("N"), SelectedLevel, prompt, null);
         if (request is null)
         {
             StatusText = "Blockiert: Diese Stufe darf nicht an die Cloud.";
+            Messages.Add(ChatMessage.Assistant(
+                "Diese Stufe ist nur lokal erlaubt – ich sende nichts an die Cloud."));
             return;
         }
 
+        Messages.Add(ChatMessage.User(prompt));
+        Prompt = string.Empty;
         StatusText = "Sende …";
         var result = await _cloudGateway.GenerateAsync(request, cancellationToken);
         StatusText = result.Allowed
             ? $"Antwort über Route '{result.Route}' erhalten."
             : "Die Cloud hat die Anfrage abgelehnt.";
+        Messages.Add(ChatMessage.Assistant(
+            result.Allowed
+                ? $"Antwort über Route '{result.Route}' erhalten."
+                : "Die Cloud hat die Anfrage abgelehnt."));
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)

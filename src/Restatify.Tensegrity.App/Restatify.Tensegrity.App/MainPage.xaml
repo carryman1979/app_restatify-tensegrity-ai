@@ -3,64 +3,211 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:local="using:Restatify.Tensegrity.App"
       xmlns:core="using:Restatify.Tensegrity.App.Core"
-      xmlns:utu="using:Uno.Toolkit.UI"
-      xmlns:um="using:Uno.Material"
-      Background="{ThemeResource BackgroundBrush}">
+      Background="#FF141B33">
   <Page.DataContext>
     <core:MainViewModel />
   </Page.DataContext>
-  <ScrollViewer IsTabStop="True">
-    <Grid utu:SafeArea.Insets="VisibleBounds" Padding="24">
-      <StackPanel Spacing="16" MaxWidth="420">
-        <TextBlock Text="Tensegrity AI" Style="{StaticResource TitleLarge}" />
+  <Page.Resources>
+    <local:LevelCheckConverter x:Key="LevelCheck" />
+    <local:ChatMessageTemplateSelector x:Key="MessageTemplates">
+      <local:ChatMessageTemplateSelector.AssistantTemplate>
+        <DataTemplate>
+          <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6" HorizontalAlignment="Left">
+            <Border Width="34" Height="34" CornerRadius="17" Background="#FFF26D3D" VerticalAlignment="Top">
+              <TextBlock Text="🤖" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <Border Background="#FFE9ECF5" CornerRadius="14" Padding="14,10" MaxWidth="440">
+              <TextBlock Text="{Binding Text}" Foreground="#FF1B1F36" TextWrapping="WrapWholeWords" />
+            </Border>
+          </StackPanel>
+        </DataTemplate>
+      </local:ChatMessageTemplateSelector.AssistantTemplate>
+      <local:ChatMessageTemplateSelector.UserTemplate>
+        <DataTemplate>
+          <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6" HorizontalAlignment="Right">
+            <Border Background="#FFF26D3D" CornerRadius="14" Padding="14,10" MaxWidth="440">
+              <TextBlock Text="{Binding Text}" Foreground="White" TextWrapping="WrapWholeWords" />
+            </Border>
+            <Border Width="34" Height="34" CornerRadius="17" Background="#FF3A4270" VerticalAlignment="Top">
+              <TextBlock Text="👤" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+          </StackPanel>
+        </DataTemplate>
+      </local:ChatMessageTemplateSelector.UserTemplate>
+    </local:ChatMessageTemplateSelector>
+  </Page.Resources>
 
-        <TextBlock Text="Vertraulichkeitsstufe" Style="{StaticResource BodyStrong}" />
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="250" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
 
-        <ComboBox SelectedItem="{Binding SelectedLevel, Mode=TwoWay}"
-                  ItemsSource="{Binding AvailableLevels}"
-                  HorizontalAlignment="Stretch" />
-
-        <TextBox PlaceholderText="Deine Frage …"
-                 Text="{Binding Prompt, Mode=TwoWay}"
-                 AcceptsReturn="False" />
-
-        <Border Background="{ThemeResource SecondaryBrush}" CornerRadius="12" Padding="16">
-          <TextBlock Text="{Binding TaintText}" TextWrapping="WrapWholeWords" />
-        </Border>
-
-        <TextBlock Text="{Binding PolicyText}" TextWrapping="WrapWholeWords" />
-
-        <Button Content="An Cloud senden"
-                IsEnabled="{Binding CanSend}"
-                Click="OnSendClicked" />
-
-        <TextBlock Text="{Binding StatusText}" TextWrapping="WrapWholeWords" />
-
-        <TextBlock Text="{Binding PolicyBackendText}"
-                   Style="{StaticResource BodySmall}"
-                   Foreground="{ThemeResource SecondaryBrush}" />
-
-        <TextBlock Text="Feedback" Style="{StaticResource BodyStrong}" />
-
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button Content="👍" Click="OnThumbsUpClicked" />
-          <Button Content="👎" Click="OnThumbsDownClicked" />
+    <!-- Sidebar -->
+    <Grid Background="#FF0E1226">
+      <StackPanel Padding="20" Spacing="18">
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Border Width="32" Height="32" CornerRadius="16" Background="#FFF26D3D">
+            <TextBlock Text="R" FontWeight="Bold" Foreground="White"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Text="estatify" Foreground="White" FontSize="20" FontWeight="SemiBold"
+                     VerticalAlignment="Center" />
         </StackPanel>
 
-        <TextBox PlaceholderText="Beleg oder Quelle …"
-                 Text="{Binding Feedback.Citation, Mode=TwoWay}" />
+        <TextBlock Text="Chats" Foreground="#FF8A90B0" Margin="0,10,0,0" />
 
-        <TextBox PlaceholderText="Kommentar (optional) …"
-                 Text="{Binding Feedback.Comment, Mode=TwoWay}"
-                 AcceptsReturn="True"
-                 TextWrapping="Wrap" />
-
-        <Button Content="Feedback senden"
-                IsEnabled="{Binding Feedback.CanSubmit}"
-                Click="OnFeedbackSubmitClicked" />
-
-        <TextBlock Text="{Binding Feedback.StatusText}" TextWrapping="WrapWholeWords" />
+        <Border Background="#FF1C2342" CornerRadius="10" Padding="12">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Border Width="30" Height="30" CornerRadius="15" Background="#FFF26D3D">
+              <TextBlock Text="🤖" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <TextBlock Text="My new Curriculum" Foreground="White" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
       </StackPanel>
+
+      <TextBlock Text="{Binding PolicyBackendText}" Foreground="#FF8A90B0" FontSize="11"
+                 VerticalAlignment="Bottom" Margin="20" TextWrapping="WrapWholeWords" />
     </Grid>
-  </ScrollViewer>
+
+    <!-- Hauptbereich -->
+    <Grid Grid.Column="1" Padding="28,18">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <!-- Kopfzeile -->
+      <Grid>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <Border Width="36" Height="36" CornerRadius="18" Background="#FFF26D3D">
+            <TextBlock Text="🤖" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Text="Tensegrity AI" Foreground="White" FontSize="20" FontWeight="SemiBold"
+                     VerticalAlignment="Center" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+          <Button Background="Transparent" Foreground="#FF8A90B0" Content="↗" />
+          <Button Background="Transparent" Foreground="#FF8A90B0">
+            <Button.Flyout>
+              <Flyout>
+                <StackPanel x:Name="FeedbackPanel" Spacing="10" MinWidth="280">
+                  <TextBlock Text="Feedback" FontWeight="SemiBold" Foreground="#FF1B1F36" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="👍" Click="OnThumbsUpClicked" />
+                    <Button Content="👎" Click="OnThumbsDownClicked" />
+                  </StackPanel>
+                  <TextBox PlaceholderText="Beleg oder Quelle …"
+                           Text="{Binding Feedback.Citation, Mode=TwoWay}" />
+                  <TextBox PlaceholderText="Kommentar (optional) …"
+                           Text="{Binding Feedback.Comment, Mode=TwoWay}"
+                           AcceptsReturn="True" TextWrapping="Wrap" />
+                  <Button Content="Feedback senden"
+                          IsEnabled="{Binding Feedback.CanSubmit}"
+                          Click="OnFeedbackSubmitClicked" />
+                  <TextBlock Text="{Binding Feedback.StatusText}" Foreground="#FF5A6080"
+                             TextWrapping="WrapWholeWords" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+            <TextBlock Text="💬" />
+          </Button>
+          <Button Background="Transparent" Foreground="#FF8A90B0" Content="⋯" />
+        </StackPanel>
+      </Grid>
+
+      <!-- Fortsetzungs-Pill -->
+      <Border Grid.Row="1" Background="#FFE9ECF5" CornerRadius="12" Padding="14,6"
+              HorizontalAlignment="Left" Margin="0,12,0,4">
+        <TextBlock Text="Continuation." Foreground="#FF1B1F36" FontSize="12" />
+      </Border>
+
+      <!-- Chat-Verlauf -->
+      <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+        <ItemsControl ItemsSource="{Binding Messages}"
+                      ItemTemplateSelector="{StaticResource MessageTemplates}" />
+      </ScrollViewer>
+
+      <!-- Eingabezeile -->
+      <Grid Grid.Row="3" Margin="0,12,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <Button Background="Transparent" Padding="0" VerticalAlignment="Center">
+          <Button.Flyout>
+            <Flyout x:Name="PrivacyFlyout" Placement="TopEdgeAlignedLeft">
+              <StackPanel x:Name="PrivacyPanel" Spacing="6" MinWidth="250" Padding="8">
+                <TextBlock Text="Privacy-Modes" FontWeight="SemiBold" FontSize="15"
+                           Foreground="#FF1B1F36" Margin="4,0,0,6" />
+                <Button Tag="Offen" Click="OnPrivacyModeClicked"
+                        Background="#E5E5EAFF" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left">
+                  <Grid MinWidth="220">
+                    <TextBlock Text="Open" Foreground="#FF1B1F36" VerticalAlignment="Center" />
+                    <TextBlock Text="✓" Foreground="#FFF26D3D" FontWeight="Bold"
+                               HorizontalAlignment="Right"
+                               Visibility="{Binding SelectedLevel, Converter={StaticResource LevelCheck}, ConverterParameter=Offen}" />
+                  </Grid>
+                </Button>
+                <Button Tag="Vertraulich" Click="OnPrivacyModeClicked"
+                        Background="#E5E5EAFF" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left">
+                  <Grid MinWidth="220">
+                    <TextBlock Text="Confidential" Foreground="#FF1B1F36" VerticalAlignment="Center" />
+                    <TextBlock Text="✓" Foreground="#FFF26D3D" FontWeight="Bold"
+                               HorizontalAlignment="Right"
+                               Visibility="{Binding SelectedLevel, Converter={StaticResource LevelCheck}, ConverterParameter=Vertraulich}" />
+                  </Grid>
+                </Button>
+                <Button Tag="StrengGeheim" Click="OnPrivacyModeClicked"
+                        Background="#FFF26D3D" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left">
+                  <Grid MinWidth="220">
+                    <TextBlock Text="Strictly confidential" Foreground="White" VerticalAlignment="Center" />
+                    <TextBlock Text="✓" Foreground="White" FontWeight="Bold"
+                               HorizontalAlignment="Right"
+                               Visibility="{Binding SelectedLevel, Converter={StaticResource LevelCheck}, ConverterParameter=StrengGeheim}" />
+                  </Grid>
+                </Button>
+                <Button Tag="NurLokal" Click="OnPrivacyModeClicked"
+                        Background="#E5E5EAFF" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left">
+                  <Grid MinWidth="220">
+                    <TextBlock Text="Nur lokal" Foreground="#FF1B1F36" VerticalAlignment="Center" />
+                    <TextBlock Text="✓" Foreground="#FFF26D3D" FontWeight="Bold"
+                               HorizontalAlignment="Right"
+                               Visibility="{Binding SelectedLevel, Converter={StaticResource LevelCheck}, ConverterParameter=NurLokal}" />
+                  </Grid>
+                </Button>
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+          <Border Width="40" Height="40" CornerRadius="20" Background="#FFF26D3D">
+            <TextBlock Text="🔒" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Button>
+
+        <TextBox Grid.Column="1" PlaceholderText="Type in your message..."
+                 Text="{Binding Prompt, Mode=TwoWay}"
+                 VerticalAlignment="Center" Margin="10,0" />
+
+        <Button Grid.Column="2" Click="OnSendClicked" IsEnabled="{Binding CanSend}"
+                Background="Transparent" Padding="0" VerticalAlignment="Center">
+          <Border Width="40" Height="40" CornerRadius="20" Background="#FFF26D3D">
+            <TextBlock Text="➤" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </Button>
+      </Grid>
+
+      <TextBlock Grid.Row="4" Text="{Binding StatusText}" Foreground="#FF8A90B0"
+                 FontSize="11" Margin="2,6,0,0" />
+    </Grid>
+  </Grid>
 </Page>
