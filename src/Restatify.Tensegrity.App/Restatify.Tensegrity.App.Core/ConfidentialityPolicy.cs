@@ -17,7 +17,7 @@ public static class ConfidentialityPolicy
         return level is ConfidentialityLevel.StrengGeheim or ConfidentialityLevel.NurLokal;
     }
 
-    public static ConfidentialityLevel TaintMax(IEnumerable<ConfidentialityLevel> levels)
+    public static ConfidentialityLevel TaintMax(IEnumerable<ConfidentialityLevel>? levels)
     {
         if (levels is null)
         {
