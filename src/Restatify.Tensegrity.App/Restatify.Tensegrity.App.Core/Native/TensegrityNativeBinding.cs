@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Restatify.Tensegrity.App.Core.Native;
 
@@ -13,7 +14,7 @@ namespace Restatify.Tensegrity.App.Core.Native;
 /// 2. tg_ffi.dll neben der App-Assembly
 /// 3. tg_ffi.dll im Core-Repo (target/debug bzw. target/release) – für Entwicklung
 /// </summary>
-public sealed class TensegrityNativeBinding : ITensegrityNative
+public sealed class TensegrityNativeBinding : ITensegrityNative, ITensegrityInference
 {
     public const string PathEnvironmentVariable = "TENSEGRITY_NATIVE_PATH";
     public const string LibraryFileName = "tg_ffi.dll";
@@ -23,6 +24,8 @@ public sealed class TensegrityNativeBinding : ITensegrityNative
     private readonly BrowserBlockedFn _browserBlocked;
     private readonly TaintMaxFn _taintMax;
     private readonly FoldPayloadBytesFn _foldPayloadBytes;
+    private readonly ConfigureAutoFn? _configureAuto;
+    private readonly GenerateLocalFn? _generateLocal;
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.U1)]
@@ -38,19 +41,33 @@ public sealed class TensegrityNativeBinding : ITensegrityNative
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate long FoldPayloadBytesFn(UIntPtr deltaBytes, byte level);
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate int ConfigureAutoFn();
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate long GenerateLocalFn([In] byte[] prompt, UIntPtr promptLen, [Out] byte[] output, UIntPtr outCap);
+
     private TensegrityNativeBinding(
         IntPtr library,
         AllowsTransportFn allowsTransport,
         BrowserBlockedFn browserBlocked,
         TaintMaxFn taintMax,
-        FoldPayloadBytesFn foldPayloadBytes)
+        FoldPayloadBytesFn foldPayloadBytes,
+        ConfigureAutoFn? configureAuto,
+        GenerateLocalFn? generateLocal)
     {
         _library = library;
         _allowsTransport = allowsTransport;
         _browserBlocked = browserBlocked;
         _taintMax = taintMax;
         _foldPayloadBytes = foldPayloadBytes;
+        _configureAuto = configureAuto;
+        _generateLocal = generateLocal;
+        SupportsLocalInference = configureAuto is not null && generateLocal is not null;
     }
+
+    /// <summary>True, wenn die geladene DLL die Inferenz-Exporte (ADR-0012) enthält.</summary>
+    public bool SupportsLocalInference { get; }
 
     /// <summary>
     /// Versucht, die native Bibliothek zu laden. Liefert false, wenn kein Kandidatenpfad
@@ -166,7 +183,19 @@ public sealed class TensegrityNativeBinding : ITensegrityNative
             return false;
         }
 
-        binding = new TensegrityNativeBinding(handle, allowsTransport, browserBlocked, taintMax, foldPayloadBytes);
+        // Inferenz-Exporte sind optional: ältere DLLs ohne ADR-0012 bleiben ladbar,
+        // die lokale Generierung ist dann einfach nicht verfügbar.
+        var hasConfigure = TryGetExport(handle, "tg_infer_configure_auto", out ConfigureAutoFn? configureAuto);
+        var hasGenerate = TryGetExport(handle, "tg_generate_local", out GenerateLocalFn? generateLocal);
+
+        binding = new TensegrityNativeBinding(
+            handle,
+            allowsTransport,
+            browserBlocked,
+            taintMax,
+            foldPayloadBytes,
+            hasConfigure ? configureAuto : null,
+            hasGenerate ? generateLocal : null);
         error = null;
         return true;
     }
@@ -198,4 +227,21 @@ public sealed class TensegrityNativeBinding : ITensegrityNative
 
     [ExcludeFromCodeCoverage(Justification = "Native ABI-Grenze: nur mit vorhandener tg_ffi.dll ausführbar (Paritäts-Test).")]
     public long FoldPayloadBytes(ulong deltaBytes, byte levelIndex) => _foldPayloadBytes((UIntPtr)deltaBytes, levelIndex);
+
+    [ExcludeFromCodeCoverage(Justification = "Native ABI-Grenze: benötigt tg_ffi.dll und eingerichtete lokale Laufzeit.")]
+    public bool ConfigureLocal() => _configureAuto?.Invoke() == 0;
+
+    [ExcludeFromCodeCoverage(Justification = "Native ABI-Grenze: benötigt tg_ffi.dll und eingerichtete lokale Laufzeit.")]
+    public string? GenerateLocal(string prompt, int maxOutputBytes = 4096)
+    {
+        if (_generateLocal is null)
+        {
+            return null;
+        }
+
+        var promptBytes = Encoding.UTF8.GetBytes(prompt);
+        var output = new byte[maxOutputBytes];
+        var written = _generateLocal(promptBytes, (UIntPtr)promptBytes.Length, output, (UIntPtr)output.Length);
+        return written >= 0 ? Encoding.UTF8.GetString(output, 0, (int)written) : null;
+    }
 }

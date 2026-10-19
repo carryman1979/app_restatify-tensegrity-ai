@@ -218,6 +218,82 @@ public class UnitTest1
         Assert.That(viewModel.PrivacyModeText, Is.EqualTo("Strictly confidential"));
     }
 
+    private sealed class FakeLocalGateway : ILocalGateway
+    {
+        public bool IsAvailable { get; set; }
+
+        public int CallCount { get; private set; }
+
+        public Task<string> GenerateAsync(string prompt, CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            return Task.FromResult($"lokal:{prompt}");
+        }
+    }
+
+    [Test]
+    public async Task ViewModel_LocalOnly_Level_Uses_Local_Gateway_When_Available()
+    {
+        var gateway = new FakeGateway();
+        var local = new FakeLocalGateway { IsAvailable = true };
+        var viewModel = new MainViewModel(gateway, new TensegrityPolicyEngine(null), local)
+        {
+            SelectedLevel = ConfidentialityLevel.NurLokal,
+            Prompt = "Geheim"
+        };
+
+        await viewModel.SendAsync();
+
+        Assert.That(gateway.CallCount, Is.EqualTo(0));
+        Assert.That(local.CallCount, Is.EqualTo(1));
+        Assert.That(viewModel.StatusText, Does.Contain("Lokal beantwortet"));
+        Assert.That(viewModel.Messages[^1].Text, Does.Contain("lokal:Geheim"));
+    }
+
+    [Test]
+    public async Task ViewModel_Cloud_Failure_Falls_Back_To_Local_Gateway()
+    {
+        var gateway = new ThrowingGateway();
+        var local = new FakeLocalGateway { IsAvailable = true };
+        var viewModel = new MainViewModel(gateway, new TensegrityPolicyEngine(null), local)
+        {
+            SelectedLevel = ConfidentialityLevel.Offen,
+            Prompt = "Frage"
+        };
+
+        await viewModel.SendAsync();
+
+        Assert.That(local.CallCount, Is.EqualTo(1));
+        Assert.That(viewModel.StatusText, Does.Contain("Lokal beantwortet"));
+        Assert.That(viewModel.Messages[^1].Text, Does.Contain("lokal:Frage"));
+        // Keine doppelte Nutzer-Blase im Fallback-Pfad
+        Assert.That(viewModel.Messages.Count(m => m.IsUser && m.Text == "Frage"), Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task ViewModel_Cloud_Failure_Without_Local_Gateway_Shows_Setup_Hint()
+    {
+        var gateway = new ThrowingGateway();
+        var viewModel = new MainViewModel(gateway)
+        {
+            SelectedLevel = ConfidentialityLevel.Offen,
+            Prompt = "Frage"
+        };
+
+        await viewModel.SendAsync();
+
+        Assert.That(viewModel.StatusText, Does.Contain("Blockiert"));
+        Assert.That(viewModel.Messages[^1].Text, Does.Contain("fetch-local-runtime"));
+    }
+
+    private sealed class ThrowingGateway : ICloudGateway
+    {
+        public Task<GenerateResult> GenerateAsync(GenerateRequest request, CancellationToken cancellationToken = default)
+        {
+            throw new HttpRequestException("Verbindung fehlgeschlagen");
+        }
+    }
+
     [Test]
     public void ViewModel_CanSend_Requires_Prompt_And_Allowed_Level()
     {

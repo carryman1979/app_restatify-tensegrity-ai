@@ -266,6 +266,36 @@ public class NativePolicyTests
         Assert.That(engine.Backend, Is.EqualTo(nativeExpected ? "Native" : "Managed"));
     }
 
+    [Test]
+    public void NativeLocalGateway_reflects_runtime_availability()
+    {
+        var gateway = NativeLocalGateway.CreateDefault();
+
+        Assert.That(gateway, Is.Not.Null);
+        if (!gateway.IsAvailable)
+        {
+            Assert.ThrowsAsync<InvalidOperationException>(async () => await gateway.GenerateAsync("x"));
+        }
+    }
+
+    [Test]
+    public async Task LocalGateway_EndToEnd_With_Real_Model()
+    {
+        if (Environment.GetEnvironmentVariable("TENSEGRITY_E2E_LOCAL") != "1")
+        {
+            Assert.Ignore("E2E deaktiviert (TENSEGRITY_E2E_LOCAL=1 zum Aktivieren).");
+            return;
+        }
+
+        var gateway = NativeLocalGateway.CreateDefault();
+        Assert.That(gateway.IsAvailable, Is.True, "Lokale Laufzeit nicht eingerichtet (fetch-local-runtime.ps1).");
+
+        var answer = await gateway.GenerateAsync("Sag kurz Hallo auf Deutsch.");
+
+        Assert.That(answer, Is.Not.Empty);
+        TestContext.Out.WriteLine($"Lokale Antwort: {answer}");
+    }
+
     private sealed class FakeGateway : ICloudGateway
     {
         public Task<GenerateResult> GenerateAsync(GenerateRequest request, CancellationToken cancellationToken = default)
