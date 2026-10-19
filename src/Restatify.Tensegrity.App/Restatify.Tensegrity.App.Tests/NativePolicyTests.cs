@@ -228,4 +228,49 @@ public class NativePolicyTests
         });
         Assert.That(taint, Is.EqualTo(ConfidentialityLevel.Vertraulich));
     }
+
+    [Test]
+    public void MainViewModel_uses_native_engine_when_injected()
+    {
+        var native = new FakeNative { BrowserBlockedResult = true };
+        var viewModel = new MainViewModel(new FakeGateway(), new TensegrityPolicyEngine(native));
+
+        Assert.That(viewModel.PolicyBackend, Is.EqualTo("Native"));
+        Assert.That(viewModel.PolicyBackendText, Does.Contain("nativ"));
+
+        viewModel.SelectedLevel = ConfidentialityLevel.StrengGeheim;
+
+        Assert.That(viewModel.WebBlocked, Is.True);
+        Assert.That(native.BrowserBlockedCalls, Is.EqualTo(new byte[] { 2 }));
+    }
+
+    [Test]
+    public void MainViewModel_without_engine_falls_back_to_managed()
+    {
+        var viewModel = new MainViewModel(new FakeGateway());
+
+        Assert.That(viewModel.PolicyBackend, Is.EqualTo("Managed"));
+        Assert.That(viewModel.PolicyBackendText, Does.Contain("Fallback"));
+        Assert.That(viewModel.CloudAllowed, Is.True);
+
+        viewModel.SelectedLevel = ConfidentialityLevel.StrengGeheim;
+        Assert.That(viewModel.CloudAllowed, Is.False);
+    }
+
+    [Test]
+    public void CreateDefault_matches_binding_availability()
+    {
+        var engine = TensegrityPolicyEngine.CreateDefault();
+
+        var nativeExpected = TensegrityNativeBinding.TryCreate(null, out _, out _);
+        Assert.That(engine.Backend, Is.EqualTo(nativeExpected ? "Native" : "Managed"));
+    }
+
+    private sealed class FakeGateway : ICloudGateway
+    {
+        public Task<GenerateResult> GenerateAsync(GenerateRequest request, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new GenerateResult(true, "generalist", Array.Empty<string>()));
+        }
+    }
 }

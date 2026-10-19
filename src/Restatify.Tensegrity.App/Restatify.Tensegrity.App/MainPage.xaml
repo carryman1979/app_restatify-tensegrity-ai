@@ -36,6 +36,10 @@
 
         <TextBlock Text="{Binding StatusText}" TextWrapping="WrapWholeWords" />
 
+        <TextBlock Text="{Binding PolicyBackendText}"
+                   Style="{StaticResource BodySmall}"
+                   Foreground="{ThemeResource SecondaryBrush}" />
+
         <TextBlock Text="Feedback" Style="{StaticResource BodyStrong}" />
 
         <StackPanel Orientation="Horizontal" Spacing="8">

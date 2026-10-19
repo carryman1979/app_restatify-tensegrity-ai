@@ -17,6 +17,18 @@ public sealed class TensegrityPolicyEngine
         _native = native;
     }
 
+    /// <summary>
+    /// Standard-Engine der App: versucht den nativen Rust-Core (tg_ffi) zu laden
+    /// (Env-Variable, App-Verzeichnis, Core-Repo-Fallback) und fällt sonst auf die
+    /// Managed-Implementierung zurück.
+    /// </summary>
+    public static TensegrityPolicyEngine CreateDefault()
+    {
+        return TensegrityNativeBinding.TryCreate(null, out var binding, out _)
+            ? new TensegrityPolicyEngine(binding)
+            : new TensegrityPolicyEngine(null);
+    }
+
     /// <summary>"Native", wenn der Rust-Core geladen ist, sonst "Managed".</summary>
     public string Backend => _native is not null ? "Native" : "Managed";
 

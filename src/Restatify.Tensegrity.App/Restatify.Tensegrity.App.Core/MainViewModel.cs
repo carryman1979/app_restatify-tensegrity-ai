@@ -6,18 +6,25 @@ namespace Restatify.Tensegrity.App.Core;
 public sealed class MainViewModel : INotifyPropertyChanged
 {
     private readonly ICloudGateway _cloudGateway;
+    private readonly TensegrityPolicyEngine _policy;
     private ConfidentialityLevel _selectedLevel = ConfidentialityLevel.Offen;
     private string _prompt = string.Empty;
     private string _statusText = "Bereit.";
 
     public MainViewModel()
-        : this(new CloudGateway())
+        : this(new CloudGateway(), TensegrityPolicyEngine.CreateDefault())
     {
     }
 
     public MainViewModel(ICloudGateway cloudGateway)
+        : this(cloudGateway, new TensegrityPolicyEngine(null))
+    {
+    }
+
+    public MainViewModel(ICloudGateway cloudGateway, TensegrityPolicyEngine policy)
     {
         _cloudGateway = cloudGateway;
+        _policy = policy;
         Feedback = new FeedbackViewModel(this);
     }
 
@@ -77,11 +84,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    public bool CloudAllowed => ConfidentialityPolicy.IsCloudAllowed(SelectedLevel);
+    public bool CloudAllowed => _policy.IsCloudAllowed(SelectedLevel);
 
-    public bool WebBlocked => ConfidentialityPolicy.IsBlockedInWeb(SelectedLevel);
+    public bool WebBlocked => _policy.IsBlockedInWeb(SelectedLevel);
 
     public bool CanSend => CloudAllowed && !string.IsNullOrWhiteSpace(Prompt);
+
+    /// <summary>Aktive Policy-Engine: "Native" (Rust-Core via FFI) oder "Managed" (Fallback).</summary>
+    public string PolicyBackend => _policy.Backend;
+
+    public string PolicyBackendText => _policy.Backend == "Native"
+        ? "Policy-Engine: Rust-Core (nativ)"
+        : "Policy-Engine: Managed (Fallback)";
 
     public string PolicyText => WebBlocked
         ? "Diese Stufe ist im Web/Cloud-Pfad gesperrt."
